@@ -10,6 +10,7 @@ from pathlib import Path
 from time import sleep
 
 from pytubefix import YouTube
+from pytubefix.cli import on_progress
 import tqdm
 from subprocess import call
 
@@ -37,8 +38,10 @@ def process(data, seq_id, videoname, output_root):
     if not out_path.exists():
         out_path.mkdir(exist_ok=True, parents=True)
     else:
-        print("[INFO] Something Wrong, stop process")
-        return True
+        # print("[INFO] Something Wrong, stop process")
+        # return True
+        print(f"[Warn]<{os.path.basename(out_path)}> has exist")
+        # return True
 
     list_str_timestamps = []
     for timestamp in data.list_list_timestamps[seq_id]:
@@ -52,6 +55,10 @@ def process(data, seq_id, videoname, output_root):
 
     # extract frames from a video
     for idx, str_timestamp in enumerate(list_str_timestamps):
+        # 这块也是自己加的
+        if(os.path.exists(str(out_path / f'{data.list_list_timestamps[seq_id][idx]}.jpg'))):
+            continue
+        #END
         call(("ffmpeg", "-ss", str_timestamp, "-i", str(videoname), "-vframes", "1", "-f", "image2", str(out_path / f'{data.list_list_timestamps[seq_id][idx]}.jpg')), stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
 
     return False
@@ -59,6 +66,10 @@ def process(data, seq_id, videoname, output_root):
 
 def wrap_process(list_args):
     return process(*list_args)
+
+def deal_with_filename(filename):
+    newFilename=filename.replace("|","")
+    return newFilename
 
 
 class DataDownloader:
@@ -101,42 +112,62 @@ class DataDownloader:
 
     def run(self):
         print("[INFO] Start downloading {} movies".format(len(self.list_data)))
-
+        countProgressALL=0
+        countProgressFail=0
         for global_count, data in enumerate(self.list_data.values()):
             print("[INFO] Downloading {} ".format(data.url))
             current_file = self.tmp_path / f"current_{self.mode}"
 
-            call(("rm", "-r", str(current_file)))
+            # call(("rm", "-r", str(current_file)))
 
             try:
                 # sometimes this fails because of known issues of pytube and unknown factors
-                yt = YouTube(data.url)
+                proxies= {
+                    'http': 'http://127.0.0.1:7890',
+                    'https': 'http://127.0.0.1:7890'
+                }
+                yt = YouTube(data.url,on_progress_callback=on_progress,proxies=proxies)
                 stream = yt.streams.filter(res='360p').first()
-                stream.download(str(current_file))
+                if((not os.path.isfile(deal_with_filename(os.path.join(current_file,stream.default_filename))))
+                        or
+                        (os.path.getsize(deal_with_filename(os.path.join(current_file,stream.default_filename)))<1024*1024)
+                ):
+                    stream.download(str(current_file),filename=deal_with_filename(stream.default_filename))
+                    if((os.path.getsize(deal_with_filename(os.path.join(current_file,stream.default_filename)))<1024*1024)):
+                        print(f"[WARNING]\033[93m Download File size is {os.path.getsize(deal_with_filename(os.path.join(current_file,stream.default_filename)))} \033[0m")
+
             except:
+                countProgressALL+=1
+                countProgressFail+=1
+                print(f"[ERROR]\033[91m Download <{data.url}> failed,noted it (failed {countProgressFail}) \033[0m")
                 with open(os.path.join(str(self.data_path.parent), 'failed_videos_' + self.mode + '.txt'), 'a') as f:
                     for seqname in data.list_seqnames:
                         f.writelines(seqname + '\n')
+                with open(os.path.join(str(self.data_path.parent), 'failed_videos_url_' + self.mode + '.txt'), 'a') as f:
+                    f.writelines(data.url + '\n')
                 continue
 
-            sleep(1)
+            sleep(0.1)
 
-            current_file = next(current_file.iterdir())
+            # current_file = next(current_file.iterdir())
+            # 不删除了，所以不能这么做
+            current_file = current_file / deal_with_filename(stream.default_filename)
 
             if len(data) == 1:  # len(data) is len(data.list_seqnames)
                 process(data, 0, current_file, self.out_path)
             else:
-                with Pool(processes=4) as pool:
+                with Pool(processes=10) as pool:
                     pool.map(wrap_process, [(data, seq_id, current_file, self.out_path) for seq_id in range(len(data))])
 
-            print(f"[INFO] Extracted {sum(map(len, data.list_list_timestamps))}")
+            countProgressALL+=1
+            print(f"[INFO] Extracted {sum(map(len, data.list_list_timestamps))},Progress {countProgressALL}/{len(self.list_data)}")
 
             # remove videos
-            call(("rm", str(current_file)))
+            # call(("rm", str(current_file)))
             # os.system(command)
 
-            if self.is_done:
-                return False
+            # if self.is_done:
+            #     return False
 
         return True
 
