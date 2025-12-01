@@ -22,8 +22,22 @@ from misc.localstorage import copy_to_local_storage, extract_tar, get_local_dir
 def load_seq_data(data_path, split):
     file_path = data_path / f"{split}.pickle.gz"
     with gzip.open(file_path, "rb") as f:
-        seq_data = pickle.load(f)
-    return seq_data
+        seqData:dict = pickle.load(f)
+    # add a seq that check if the video is exist
+    delSeqs=list()
+
+    def isDirEmpty(folder_path)->bool:
+        folder = Path(folder_path)
+        return not any(folder.iterdir())
+
+    for seqKey in seqData.keys():
+        img_path = data_path/split/seqKey
+        if(not os.path.isdir(img_path) or isDirEmpty(img_path)):
+               delSeqs.append(seqKey)
+    print(f"[WARNING] {len(delSeqs)} seq(s) loss!")
+    for delSeq in delSeqs:
+        seqData.pop(delSeq)
+    return seqData
 
 
 class Re10KDataset(data.Dataset):

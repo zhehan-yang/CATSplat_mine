@@ -66,7 +66,7 @@ class UniDepthExtended(nn.Module):
         self.pointnet = PointNet()
         self.parameters_to_train +=[{"params": self.pointnet.parameters()}]
 
-        pointnet_ckpt_dir = '../../../pointnet/ckpt/save.pth'
+        pointnet_ckpt_dir = 'pointnet/ckpt/save.pth'
         pointnet_ckpt = torch.load(pointnet_ckpt_dir)
         self.pointnet.load_state_dict(pointnet_ckpt)
         
