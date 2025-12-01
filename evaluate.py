@@ -58,7 +58,7 @@ def evaluate(model, cfg, evaluator, dataloader, device=None, save_vis=False):
     dataloader_iter = iter(dataloader)
     for k in tqdm([i for i in range(len(dataloader.dataset) // cfg.data_loader.batch_size)]):
         if save_vis:
-            out_dir = Path("Put your ply file path")
+            out_dir = Path("output")
             out_dir.mkdir(exist_ok=True)
             print(f"saving images to: {out_dir.resolve()}")
             seq_name = dataloader.dataset._seq_keys[k]

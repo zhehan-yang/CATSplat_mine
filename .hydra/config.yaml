@@ -90,7 +90,7 @@ model:
 dataset:
   name: re10k
   split: original
-  data_path: /data/wonseok/data/RealEstate10K
+  data_path: data/RealEstate10K
   depth_path: null
   unpack_pcl_tar: false
   preload_depths: false
