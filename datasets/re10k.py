@@ -57,7 +57,7 @@ class Re10KDataset(data.Dataset):
             if not self.data_path.exists():
                 raise FileNotFoundError(f"Relative path {relative_path} does not exist")
         elif not self.data_path.exists():
-            raise fileNotFoundError(f"Absolute path {self.data_path} does not exist")
+            raise FileNotFoundError(f"Absolute path {self.data_path} does not exist")
 
         self.depth_path = None
         if self.cfg.dataset.preload_depths:

@@ -1,6 +1,6 @@
 defaults:
-  - _self_
-  - hydra: defaults
+  - _self_  # 有自己，避免被覆盖，且自己的优先级是最高
+  - hydra: defaults   # 加载hydra中的defaults文件
   - model: gaussian
   - dataset: re10k
   - loss: [reconstruction]

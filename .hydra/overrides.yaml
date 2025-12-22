@@ -1,3 +1,4 @@
+- dataset=llff
 - +experiment=layered_re10k
 - +dataset.crop_border=true
 - dataset.test_split_path=./splits/re10k_mine_filtered/test_files.txt

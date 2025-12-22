@@ -6,12 +6,14 @@ from packaging.version import Version
 from datasets.re10k import Re10KDataset
 from datasets.nyu.dataset import NYUv2Dataset
 from datasets.kitti import KITTIDataset
+from datasets.llff import LLFFDataset
 
 def create_datasets(cfg, split="val"):
     datasets_dict = {
         "re10k": Re10KDataset,
         "nyuv2": NYUv2Dataset,
         "kitti": KITTIDataset,
+        "llff": LLFFDataset,
     }[cfg.dataset.name]
 
     dataset = datasets_dict(cfg, split=split)

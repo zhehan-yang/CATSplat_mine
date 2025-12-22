@@ -114,6 +114,7 @@ hydra:
     - hydra.job.chdir=true
     - hydra.mode=RUN
     task:
+    - dataset=llff
     - +experiment=layered_re10k
     - +dataset.crop_border=true
     - dataset.test_split_path=./splits/re10k_mine_filtered/test_files.txt
@@ -121,9 +122,9 @@ hydra:
     - ++eval.save_vis=true
     - run.checkpoint=/media/yzh/Dataset3/3DReconstruction/model/CATSplat
   job:
-    name: evaluateLlffOne
+    name: evaluate
     chdir: true
-    override_dirname: ++eval.save_vis=true,+dataset.crop_border=true,+experiment=layered_re10k,dataset.test_split_path=./splits/re10k_mine_filtered/test_files.txt,model.depth.version=v1,run.checkpoint=/media/yzh/Dataset3/3DReconstruction/model/CATSplat
+    override_dirname: ++eval.save_vis=true,+dataset.crop_border=true,+experiment=layered_re10k,dataset.test_split_path=./splits/re10k_mine_filtered/test_files.txt,dataset=llff,model.depth.version=v1,run.checkpoint=/media/yzh/Dataset3/3DReconstruction/model/CATSplat
     id: ???
     num: ???
     config_name: config
@@ -151,7 +152,7 @@ hydra:
     output_dir: /home/yzh/Desktop/project/few_shot_3DReconstruction/iccv25_CATSplat
     choices:
       experiment: layered_re10k
-      dataset: re10k
+      dataset: llff
       model: gaussian
       model/backbone: resnet
       model/depth: unidepth

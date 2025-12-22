@@ -88,16 +88,16 @@ model:
   scale_with_depth: false
   depth_cond: true
 dataset:
-  name: re10k
+  name: llff
   split: original
-  data_path: data/RealEstate10K
-  depth_path: null
+  data_path: data/nerf_llff
+  depth_path: depth_maps
   unpack_pcl_tar: false
-  preload_depths: false
+  preload_depths: true
   ransac_on_the_fly: false
   test_split_path: ./splits/re10k_mine_filtered/test_files.txt
-  height: 256
-  width: 384
+  height: 3024
+  width: 4032
   znear: 0.01
   zfar: 100.0
   max_fov: 100.0
