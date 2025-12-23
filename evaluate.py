@@ -30,7 +30,7 @@ def evaluate(model, cfg, evaluator, dataloader, device=None, save_vis=False):
 
     score_dict = {}
     match cfg.dataset.name:
-        case "re10k" | "nyuv2":
+        case "re10k" | "nyuv2" | "llff":
             # override the frame idxs used for eval
             target_frame_ids = [1, 2, 3]
             eval_frames = ["src", "tgt5", "tgt10", "tgt_rand"]
