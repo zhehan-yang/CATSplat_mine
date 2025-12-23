@@ -139,14 +139,14 @@ def main(cfg: DictConfig):
 
     cfg.data_loader.batch_size = 1
     cfg.data_loader.num_workers = 1
-    # model = GaussianPredictor(cfg)
-    # device = torch.device("cuda:0")
-    # model.to(device)
-    # loaded_optim, loaded_step, loaded_scheduler = model.load_model(cfg.run.checkpoint, ckpt_ids=0)
-    #
-    # evaluator = Evaluator(crop_border=cfg.dataset.crop_border)
-    # evaluator.to(device)
-    #
+    model = GaussianPredictor(cfg)
+    device = torch.device("cuda:0")
+    model.to(device)
+    loaded_optim, loaded_step, loaded_scheduler = model.load_model(cfg.run.checkpoint, ckpt_ids=0)
+
+    evaluator = Evaluator(crop_border=cfg.dataset.crop_border)
+    evaluator.to(device)
+
     split = "test"
     save_vis = cfg.eval.save_vis
     dataset, dataloader = create_datasets(cfg, split=split)

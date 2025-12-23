@@ -40,15 +40,18 @@ def read_camera_params(camera):
 
 
 def load_sparse_pcl_colmap(dir_recon):
+    '''
+    convert the points3D to pcl.test.pkl format
+    '''
     ext = "bin"
-    images = read_images_binary(dir_recon / f"images.{ext}")
+    images = read_images_binary(dir_recon / f"images.{ext}")  # extrinsic mainly
     points3D = read_points3d_binary(dir_recon / f"points3D.{ext}")
 
     # convert 3D coordinates to an easier to process format
-    xyz_ids = np.array(list(points3D.keys()))
+    xyz_ids = np.array(list(points3D.keys()))   # every id from 1 to N
     xyz = np.zeros((np.max(xyz_ids)+1, 3), dtype=np.float32)
     for id in xyz_ids:
-        xyz[id, :] = points3D[id].xyz
+        xyz[id, :] = points3D[id].xyz    # read the xyz
 
     image_ids = sorted(list(images.keys()))
     xys = [images[image_id].xys for image_id in image_ids]

@@ -16,12 +16,12 @@ from pathlib import Path
 from datasets.tardataset import TarDataset
 from glob import glob
 
-from datasets.data import process_projs, data_to_c2w, pil_loader, get_sparse_depth
+from datasets.data import process_projs, data_to_c2w, pil_loader, get_sparse_depth, get_sparse_depth_llff
 from misc.depth import estimate_depth_scale_ransac
 from misc.localstorage import copy_to_local_storage, extract_tar, get_local_dir
 
-from .colmap_utils import read_images_binary,read_cameras_binary,read_points3d_binary  # to make different in IMAGE
-# from .colmap_misc import *
+from .colmap_utils import read_images_binary,read_cameras_binary,read_points3d_binary,qvec2rotmat  # to make different in IMAGE
+from .colmap_misc import load_sparse_pcl_colmap
 
 
 def load_seq_data(data_path, split):
@@ -199,7 +199,7 @@ class LLFFDataset(data.Dataset):
         return key_id_pairs
     
     def _load_sparse_pcl(self, path):
-        return read_points3d_binary(path)
+        return load_sparse_pcl_colmap(Path(os.path.dirname(path)))
 
         
     def _load_image(self, key, id):
@@ -218,20 +218,23 @@ class LLFFDataset(data.Dataset):
     
     def _load_depth(self, key, id):
 
-        suffix=""
-        for suffix_t in ["jpg","JPG","png","PNG"]:
-            if(self.data_path/key/"depth_maps"/f"{id}.{suffix}").exists():
-                suffix=suffix_t
-                break
-        assert suffix != ""
-        depth = Image.open(self.data_path/key/"depth_maps"/f"{id}.{suffix}")
-        # Scale the saved image using the metadata
-        max_value = float(depth.info["max_value"])
-        min_value = float(depth.info["min_value"])
-        # Scale from uint16 range
-        depth = (np.array(depth).astype(np.float32) / (2 ** 16 - 1)) * (max_value - min_value) + min_value
-        depth.resize(self.image_size)
-        return depth
+        # suffix=""
+        # for suffix_t in ["jpg","JPG","png","PNG"]:
+        #     if(self.data_path/key/"depth_maps"/f"{id}.{suffix}").exists():
+        #         suffix=suffix_t
+        #         break
+        # assert suffix != ""
+        # depth = Image.open(self.data_path/key/"depth_maps"/f"{id}.{suffix}")
+        # # Scale the saved image using the metadata
+        # max_value = float(depth.info["max_value"])
+        # min_value = float(depth.info["min_value"])
+        # # Scale from uint16 range
+        # depth = (np.array(depth).astype(np.float32) / (2 ** 16 - 1)) * (max_value - min_value) + min_value
+        # depth.resize(self.image_size)
+        # return depth
+        img = self.loader(self.data_path/key/"depth_maps"/f"depth_{id[:id.find('.')]}.png")
+        img.resize(size=self.image_size)
+        return img
     
     @staticmethod
     def _load_split_indices(index_path):
@@ -239,10 +242,15 @@ class LLFFDataset(data.Dataset):
         def get_key_id(s):
             parts = s.split(" ")
             key = parts[0]
-            src_idx = int(parts[1])
-            tgt_5_idx = int(parts[2])
-            tgt_10_idx = int(parts[3])
-            tgt_random_idx = int(parts[4])
+            src_idx = parts[1]
+            tgt_5_idx = parts[2]
+            tgt_10_idx = parts[3]
+            tgt_random_idx = parts[4]
+
+            # src_idx = int(parts[1])
+            # tgt_5_idx = int(parts[2])
+            # tgt_10_idx = int(parts[3])
+            # tgt_random_idx = int(parts[4])
                                                       
             return key, [src_idx, tgt_5_idx, tgt_10_idx, tgt_random_idx]
 
@@ -264,9 +272,14 @@ class LLFFDataset(data.Dataset):
             depth = None
 
         # load the intrinsics matrix
-        K = process_projs(pose_data["intrinsics"][frame_idx])
+        K = process_projs(pose_data["intrinsic"][1].params)
         # load the extrinsic matrixself.num_scales
-        c2w = data_to_c2w(pose_data["poses"][frame_idx])
+        extrinsic=[v for k,v in pose_data["extrinsic"].items() if v.name==frame_idx][0]
+        w2c=np.zeros([4,4],dtype=K.dtype)
+        w2c[0:3,0:3]=qvec2rotmat(extrinsic.qvec)
+        w2c[0:3,3]=extrinsic.tvec
+        w2c[3,3]=1
+        c2w = data_to_c2w(w2c)
         img_scale = self.resize[0](img)
         inputs_color = self.to_tensor(img_scale)
         if self.cfg.dataset.pad_border_aug != 0:
@@ -495,13 +508,14 @@ class LLFFDataset(data.Dataset):
             
             if self.cfg.dataset.scale_pose_by_depth:
                 # get colmap_image_id
-                xyd = get_sparse_depth(pose_data, orig_size, sparse_pcl, frame_idx)
+                # xyd = get_sparse_depth_llff(pose_data, orig_size,sparse_pcl)
+
+                xyd = get_sparse_depth_llff(inputs_T_c2w.numpy(),orig_size,sparse_pcl,[v.id for k,v in sparse_pcl["images"].items() if v.name==frame_idx][0]-1)
             else:
                 xyd = None
             
             # input_frame_idx = src_and_tgt_frame_idxs[0]
-            timestamp = self._seq_data[seq_key]["timestamps"][frame_idx]
-            inputs[("frame_id", 0)] = f"{self.split_name_for_loading}+{seq_key}+{timestamp}"
+            inputs[("frame_id", 0)] = f"{self.split_name_for_loading}+{seq_key}+{os.path.basename(frame_idx)}"
             
             inputs[("K_tgt", frame_name)] = inputs_K_tgt
             inputs[("K_src", frame_name)] = inputs_K_src

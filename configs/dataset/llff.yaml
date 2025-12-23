@@ -7,10 +7,10 @@ preload_depths: true
 ransac_on_the_fly: false
 test_split_path: splits/llff_mine_filtered/val_files.txt
 
-#height: 256
-#width: 384
-height: 3024
-width: 4032
+height: 256
+width: 384
+#height: 3024
+#width: 4032
 
 znear: 0.01
 zfar: 100.0

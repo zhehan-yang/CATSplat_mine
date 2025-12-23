@@ -1,3 +1,4 @@
+import numpy
 from PIL import Image
 import numpy as np
 import torch
@@ -50,18 +51,48 @@ def get_sparse_depth(pose_data, orig_size, sparse_pcl, frame_idx):
     xys = xys[visible_points, :]
     p3D_ids = p3D_ids[visible_points]
 
-    xyz_image = xyz[p3D_ids, :]
-    xyz_image_h = np.hstack((xyz_image, np.ones_like(xyz_image[:, :1])))
+    xyz_image = xyz[p3D_ids, :]     # get the result in this frame_idx  ndarray N*3
+    xyz_image_h = np.hstack((xyz_image, np.ones_like(xyz_image[:, :1])))  # add a "one" on the right ndarray N*4
 
     # ===== compute point projections onto image with network data ====
     # index to -1 because image_ids are 1-indexed
     # K = _process_projs(pose_data["intrinsics"][image_id-1], H, W)
     # load the extrinsic matrixself.num_scales
-    T_w2c = pose_to_4x4(pose_data["poses"][frame_idx])
+    T_w2c = pose_to_4x4(pose_data["poses"][frame_idx])  # pose in this point ndarray N*4
     # P = K @ T_w2c
-    xyz_pix = np.einsum("ji,ni->nj", T_w2c, xyz_image_h)[:, :3]
-    depth = xyz_pix[:, 2:]
+    xyz_pix = np.einsum("ji,ni->nj", T_w2c, xyz_image_h)[:, :3]  # convert to xyz N*3
+    depth = xyz_pix[:, 2:]  # 丢掉Z轴 N*1
     img_dim = np.array([[W, H]])
-    xys_scaled = (xys / img_dim - 0.5) * 2
-    xyd = np.concatenate([xys_scaled, depth], axis=1)
+    xys_scaled = (xys / img_dim - 0.5) * 2  # from [0-1] to [-1-1]
+    xyd = np.concatenate([xys_scaled, depth], axis=1)  # from xy to d
+    return torch.from_numpy(xyd).to(torch.float32)
+
+def get_sparse_depth_llff(c2w, orig_size, sparse_pcl, frame_idx):
+    xys_all = sparse_pcl["xys"]
+    p3D_ids_all = sparse_pcl["p3D_ids"]
+    xyz = sparse_pcl["xyz"]
+
+    xys = xys_all[frame_idx]
+    p3D_ids = p3D_ids_all[frame_idx]
+
+    W, H = orig_size
+
+    visible_points = p3D_ids != -1
+    xys = xys[visible_points, :]
+    p3D_ids = p3D_ids[visible_points]
+
+    xyz_image = xyz[p3D_ids, :]     # get the result in this frame_idx  ndarray N*3
+    xyz_image_h = np.hstack((xyz_image, np.ones_like(xyz_image[:, :1])))  # add a "one" on the right ndarray N*4
+
+    # ===== compute point projections onto image with network data ====
+    # index to -1 because image_ids are 1-indexed
+    # K = _process_projs(pose_data["intrinsics"][image_id-1], H, W)
+    # load the extrinsic matrixself.num_scales
+    T_w2c = np.linalg.inv(c2w)
+    # P = K @ T_w2c
+    xyz_pix = np.einsum("ji,ni->nj", T_w2c, xyz_image_h)[:, :3]  # convert to xyz N*3
+    depth = xyz_pix[:, 2:]  # 丢掉Z轴 N*1
+    img_dim = np.array([[W, H]])
+    xys_scaled = (xys / img_dim - 0.5) * 2  # from [0-1] to [-1-1]
+    xyd = np.concatenate([xys_scaled, depth], axis=1)  # from xy to d
     return torch.from_numpy(xyd).to(torch.float32)
