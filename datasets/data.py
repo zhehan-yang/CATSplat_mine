@@ -4,7 +4,7 @@ import numpy as np
 import torch
 
 
-def process_projs(proj):
+def process_projs(proj,factor=None,init_dim=None):
     # pose in dataset is normalised by resolution
     # need to unnormalise it for metric projection
     K = np.eye(3, dtype=np.float32)
@@ -12,6 +12,14 @@ def process_projs(proj):
     K[1, 1] = proj[1]
     K[0, 2] = proj[2]
     K[1, 2] = proj[3]
+    if(factor is not None):
+        w_factor=factor[0]
+        h_factor=factor[1]
+        K[0]*=w_factor
+        K[1]*=h_factor
+    if(init_dim is not None):
+        K[0]/=init_dim[0]
+        K[1]/=init_dim[1]
     return K
 
 

@@ -202,19 +202,24 @@ class LLFFDataset(data.Dataset):
         return load_sparse_pcl_colmap(Path(os.path.dirname(path)))
 
         
-    def _load_image(self, key, id):
+    def _load_image(self, key, id,pose_data=None):
         # suffix=""
         # for suffix_t in ["jpg","JPG","png","PNG"]:
         #     if(self.data_path/key/"images"/f"{id}.{suffix}").exists():
         #         suffix=suffix_t
         #         break
         # assert suffix != ""
-        # img = self.loader(self.data_path/key/"images"/f"{id}.{suffix}")  # TODO：验证大小是否合适
+        # img = self.loader(self.data_path/key/"images"/f"{id}.{suffix}")
         # img.resize(size=self.image_size)
         # return img
-        img = self.loader(self.data_path/key/"images"/id)  # TODO：验证大小是否合适
-        img.resize(size=self.image_size)
-        return img
+        img = self.loader(self.data_path/key/"images"/id)
+        if(pose_data is not None):
+            w_factor=self.image_size[1]/img.width
+            h_factor=self.image_size[0]/img.height
+            init_dim=[img.width,img.height]
+            factor=[w_factor,h_factor]
+        img=img.resize(size=self.image_size)
+        return img,init_dim
     
     def _load_depth(self, key, id):
 
@@ -262,7 +267,7 @@ class LLFFDataset(data.Dataset):
 
     def get_frame_data(self, seq_key, frame_idx, pose_data, color_aug_fn):
         # load the image
-        img = self._load_image(seq_key, frame_idx)
+        img,init_dim = self._load_image(seq_key, frame_idx,pose_data)
         # load pre-process depth for training
         if self.depth_path is not None:
             depth = self._load_depth(seq_key, frame_idx)
@@ -273,7 +278,7 @@ class LLFFDataset(data.Dataset):
             depth = None
 
         # load the intrinsics matrix
-        K = process_projs(pose_data["intrinsic"][1].params)
+        K = process_projs(pose_data["intrinsic"][1].params,init_dim=init_dim)
         # load the extrinsic matrixself.num_scales
         extrinsic=[v for k,v in pose_data["extrinsic"].items() if v.name==frame_idx][0]
         w2c=np.zeros([4,4],dtype=K.dtype)
@@ -424,7 +429,6 @@ class LLFFDataset(data.Dataset):
     #             )
     #
     #     # ==== Load llava_feats ====
-    #     #　TODO：to be deal with
     #     max_token_len = 39
     #     try:
     #         llava_feat = self.llava_feats[seq_key]
