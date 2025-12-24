@@ -1,9 +1,11 @@
 name: llff
 split: original
 data_path: data/nerf_llff
-depth_path: depth_maps
+#depth_path: depth_maps
+depth_path:
 unpack_pcl_tar: false
-preload_depths: true
+preload_depths: false
+#preload_depths: true
 ransac_on_the_fly: false
 test_split_path: splits/llff_mine_filtered/val_files.txt
 

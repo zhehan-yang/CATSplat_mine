@@ -240,6 +240,7 @@ class LLFFDataset(data.Dataset):
     def _load_split_indices(index_path):
         "load the testing split from txt"
         def get_key_id(s):
+            s=s.rstrip("\n")
             parts = s.split(" ")
             key = parts[0]
             src_idx = parts[1]
