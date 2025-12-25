@@ -21,12 +21,12 @@ from misc.depth import estimate_depth_scale_ransac
 from misc.localstorage import copy_to_local_storage, extract_tar, get_local_dir
 
 from .colmap_utils import read_images_binary,read_cameras_binary,read_points3d_binary,qvec2rotmat  # to make different in IMAGE
-from .colmap_misc import load_sparse_pcl_colmap
+from .colmap_misc import load_sparse_pcl_colmap,read_colmap_pose
 
 
 def load_seq_data(data_path, split):
     seqData=dict()
-    for seq in os.listdir(data_path):
+    for seq in sorted(os.listdir(data_path)):
         seqData[seq]=dict()
         seqData[seq]["intrinsic"]=read_cameras_binary(data_path/seq/"sparse/0/cameras.bin")
         extrinsic_tot=read_images_binary(data_path/seq/"sparse/0/images.bin")
@@ -133,7 +133,7 @@ class LLFFDataset(data.Dataset):
 
         # load image sequence
         self._seq_data = self._load_seq_data(self.split_name_for_loading)
-        self._seq_keys = list(self._seq_data.keys())
+        self._seq_keys = list(self._seq_data.keys())  # for folder create
 
         if self.is_train:
             # 不运行，暂时不考虑
@@ -281,11 +281,8 @@ class LLFFDataset(data.Dataset):
         K = process_projs(pose_data["intrinsic"][1].params,init_dim=init_dim)
         # load the extrinsic matrixself.num_scales
         extrinsic=[v for k,v in pose_data["extrinsic"].items() if v.name==frame_idx][0]
-        w2c=np.zeros([4,4],dtype=K.dtype)
-        w2c[0:3,0:3]=qvec2rotmat(extrinsic.qvec)
-        w2c[0:3,3]=extrinsic.tvec
-        w2c[3,3]=1
-        c2w = data_to_c2w(w2c)
+        T_w2c=read_colmap_pose(extrinsic)
+        c2w = data_to_c2w(T_w2c)
         img_scale = self.resize[0](img)
         inputs_color = self.to_tensor(img_scale)
         if self.cfg.dataset.pad_border_aug != 0:
